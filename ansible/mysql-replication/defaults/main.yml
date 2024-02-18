@@ -1,0 +1,13 @@
+---
+# Replication user and password
+mysql_replication_user: "replication"
+mysql_replication_password: "SiPuNi"
+
+# IP address of the first MySQL server
+mysql_server1_ip: "10.30.30.141"
+
+# IP address of the second MySQL server
+mysql_server2_ip: "10.30.30.142"
+
+# root password
+mysql_root_password: "SiPuNi"

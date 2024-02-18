@@ -1,0 +1,10 @@
+all:
+  hosts:
+    srv1:
+      ansible_host: 91.215.136.10
+      ansible_ssh_port: 20422
+      ansible_python_interpreter: /usr/bin/python3
+    srv2:
+      ansible_host: 91.215.136.10
+      ansible_ssh_port: 20423
+      ansible_python_interpreter: /usr/bin/python3

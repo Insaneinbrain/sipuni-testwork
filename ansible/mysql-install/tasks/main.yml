@@ -1,0 +1,26 @@
+---
+- name: Install MySQL server
+  apt:
+    name: default-mysql-server
+    state: present
+
+- name: Ensure MySQL service is running
+  service:
+    name: mysql
+    state: started
+    enabled: yes
+
+- name: Install ansible python3 mysql dependency
+  apt:
+    name: python3-mysqldb
+    state: latest
+
+- name: Set MySQL root password
+  mysql_user:
+    name: root
+    password: "{{ mysql_root_password }}"
+    host: localhost
+    login_user: root
+    login_password: ""
+    state: present
+  ignore_errors: yes

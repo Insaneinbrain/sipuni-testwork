@@ -1,0 +1,10 @@
+- name: playbook install mysql and configure replication
+  gather_facts: no
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+  hosts:
+    - srv1
+    - srv2
+  roles:
+    - mysql-install
+    - mysql-replication

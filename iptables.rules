@@ -1,0 +1,20 @@
+*filter
+# Разрешить доступ без ограничений из подсети 212.193.100.0/24
+-A INPUT -s 212.193.100.0/24 -j ACCEPT
+
+# Разрешить доступ с сервера 10.30.30.142 к портам 3306 и 13306
+-A INPUT -s 10.30.30.142 -p tcp -m multiport --dports 3306,13306 -j ACCEPT
+
+# Разрешить доступ ко всем портам 80 и 22
+-A INPUT -p tcp -m multiport --dports 22,80 -j ACCEPT
+
+# Разрешить все исходящие соединения
+-A OUTPUT -j ACCEPT
+
+# Разрешить все исходящие соединения и связанные/установленные соединения
+-A INPUT -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A OUTPUT -j ACCEPT
+
+# Закрыть доступ ко всем остальным портам
+-A INPUT -j DROP
+COMMIT

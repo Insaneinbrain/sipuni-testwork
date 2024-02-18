@@ -1,0 +1,76 @@
+---
+- name: Copy config to srv1
+  copy:
+    src: ./../files/srv1-50-server.cnf
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf
+  when: "inventory_hostname == 'srv1'"
+
+- name: Copy config to srv2 execute
+  copy:
+    src: ./../files/srv2-50-server.cnf
+    dest: /etc/mysql/mariadb.conf.d/50-server.cnf  
+  when: "inventory_hostname == 'srv2'"
+
+- name: Grant all privileges to root from all hosts in MariaDB
+  mysql_query:
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+    query: "GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' IDENTIFIED BY '{{ mysql_root_password }}';"
+
+- name: Create MySQL user to replication
+  mysql_user:
+    name: "{{ mysql_replication_user }}"
+    password: "{{ mysql_replication_password }}"
+    priv: "*.*:REPLICATION SLAVE"
+    host: "%"
+    state: present
+    login_user: root
+    login_password: "{{ mysql_root_password }}"
+
+- name: Restart MySQL service
+  service:
+    name: mysql
+    state: restarted
+
+- name: Check srv1 master_log_file_srv1
+  shell: "mysql -u root -p'{{ mysql_root_password }}' -h {{ mysql_server1_ip }} -e 'SHOW MASTER STATUS' | grep bin | cut -f1"
+  register: master_log_file_srv1
+
+- debug:
+    msg: "{{ master_log_file_srv1.stdout }}"
+
+- name: Check srv1 master_log_pos_srv1
+  shell: "mysql -u root -p'{{ mysql_root_password }}' -h {{ mysql_server1_ip }} -e 'SHOW MASTER STATUS' | awk 'NR==2{print $2}'"
+  register: master_log_pos_srv1
+
+- name: Stop slave on srv2
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'STOP SLAVE'"
+  when: "inventory_hostname == 'srv2'"
+
+- name: Start replication on srv2
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'CHANGE MASTER TO MASTER_HOST = \"{{ mysql_server1_ip }}\", MASTER_USER = \"{{ mysql_replication_user }}\", MASTER_PASSWORD = \"{{ mysql_replication_password }}\", MASTER_LOG_FILE = \"{{ master_log_file_srv1.stdout }}\", MASTER_LOG_POS = {{ master_log_pos_srv1.stdout }}'"
+  when: "inventory_hostname == 'srv2'"
+
+- name: Start slave on srv2
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'START SLAVE'"
+  when: "inventory_hostname == 'srv2'"
+
+- name: Check srv2 master_log_file_srv2
+  shell: "mysql -u root -p'{{ mysql_root_password }}' -h {{ mysql_server2_ip }} -e 'SHOW MASTER STATUS' | grep bin | cut -f1"
+  register: master_log_file_srv2
+
+- name: Check srv2 master_log_pos_srv2
+  shell: "mysql -u root -p'{{ mysql_root_password }}' -h {{ mysql_server2_ip }} -e 'SHOW MASTER STATUS' | awk 'NR==2{print $2}'"
+  register: master_log_pos_srv2
+
+- name: Stop replication on srv1
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'STOP SLAVE'"
+  when: "inventory_hostname == 'srv1'"
+
+- name: Change replication settings on srv1
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'CHANGE MASTER TO MASTER_HOST = \"{{ mysql_server2_ip }}\", MASTER_USER = \"{{ mysql_replication_user }}\", MASTER_PASSWORD = \"{{ mysql_replication_password }}\", MASTER_LOG_FILE = \"{{ master_log_file_srv2.stdout }}\", MASTER_LOG_POS = {{ master_log_pos_srv2.stdout }}'"
+  when: "inventory_hostname == 'srv1'"
+
+- name: Start replication on srv1
+  command: "mysql -u root -p'{{ mysql_root_password }}' -h localhost -e 'START SLAVE'"
+  when: "inventory_hostname == 'srv1'"
